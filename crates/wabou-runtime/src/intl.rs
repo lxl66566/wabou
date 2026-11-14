@@ -38,6 +38,13 @@ pub fn system_locale() -> String {
     static LOCALE: OnceLock<String> = OnceLock::new();
     LOCALE
         .get_or_init(|| {
+            for variable in ["WABOU_LOCALE", "LC_ALL", "LANG"] {
+                if let Ok(value) = std::env::var(variable) {
+                    if !value.trim().is_empty() {
+                        return value;
+                    }
+                }
+            }
             sys_locale::get_locales()
                 .find(|locale| !matches!(locale.as_str(), "C" | "POSIX"))
                 .unwrap_or_else(|| "en-US".to_owned())
