@@ -1,0 +1,5 @@
+# Windows reserves a 1 MiB main-thread stack by default, while the QuickJS
+# runtime budget alone is 6 MiB (DEFAULT_QUICKJS_STACK_SIZE). Raise the reserve
+# so native hosts can run the interpreter and recursive style/layout work.
+[target.'cfg(all(target_os = "windows", target_env = "msvc"))']
+rustflags = ["-C", "link-args=/STACK:16777216,16777216"]
