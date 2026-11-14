@@ -155,7 +155,7 @@ pub(super) fn default_vite_config(app: &App) -> Result<Option<tempfile::NamedTem
             file.path(),
             format!(
                 "export {{ default }} from {};\n",
-                serde_json::to_string(&project.canonicalize()?)?
+                serde_json::to_string(&dunce::canonicalize(&project)?)?
             ),
         )?;
         return Ok(Some(file));
@@ -170,7 +170,7 @@ pub(super) fn default_vite_config(app: &App) -> Result<Option<tempfile::NamedTem
     super::ensure(output.status, "resolve @wabou/vite")?;
     let module: String = serde_json::from_slice(&output.stdout)?;
     let file = tempfile::Builder::new().suffix(".mjs").tempfile()?;
-    let options = serde_json::json!({"root": app.root.canonicalize()?, "entry": app.entry, "outDir": "dist/resources"});
+    let options = serde_json::json!({"root": dunce::canonicalize(&app.root)?, "entry": app.entry, "outDir": "dist/resources"});
     fs::write(
         file.path(),
         format!(

@@ -470,7 +470,7 @@ fn run_with_host(workspace: &Path, app: &App, options: &RenderOptions) -> Result
         .scenario
         .as_deref()
         .map(|path| {
-            fs::canonicalize(path).map_err(|error| {
+            dunce::canonicalize(path).map_err(|error| {
                 format!("cannot resolve render scenario {}: {error}", path.display())
             })
         })
