@@ -35,6 +35,24 @@ fn font_uses_bitmap_strikes(data: &[u8], index: u32) -> bool {
         .is_ok_and(|font| font.cbdt().is_ok() || font.sbix().is_ok())
 }
 
+/// wgpu defaults to enumerating every backend, including GL. GL adapter
+/// initialization goes through WGL and loads the vendor OpenGL ICD on Windows;
+/// vendor ICDs create hidden interop windows whose driver threads stop win32k
+/// input-locale activation from completing, so switching the input method
+/// freezes the window while it waits inside DefWindowProcW. vello_gpu only
+/// supports Vulkan, Metal, and DX12, so the GL adapter can never serve this
+/// renderer. An explicit WGPU_BACKEND is preserved.
+fn restrict_default_wgpu_backends() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        if std::env::var_os("WGPU_BACKEND").is_none() {
+            // SAFETY: called before any wgpu instance is created, and the Once
+            // guarantees a single write.
+            unsafe { std::env::set_var("WGPU_BACKEND", "vulkan,metal,dx12,webgpu") };
+        }
+    });
+}
+
 pub(crate) fn render_size(width: u32, height: u32) -> crate::Result<RenderSize> {
     if width == 0 || height == 0 {
         return Err(crate::Error::InvalidRenderSize { width, height });
@@ -106,6 +124,7 @@ pub(crate) struct WindowRenderer {
 impl WindowRenderer {
     pub(crate) fn new(transparent: bool) -> crate::Result<Self> {
         tracing::info!(target: "wabou::renderer", transparent, "initializing Vello GPU window renderer");
+        restrict_default_wgpu_backends();
         Ok(Self {
             context: WGPUContext::with_features_and_limits(
                 Some(Features::CLEAR_TEXTURE | Features::PIPELINE_CACHE),
@@ -645,6 +664,7 @@ impl ImageRenderer {
     pub(crate) fn new(width: u32, height: u32) -> Self {
         let target_size = render_size(width, height)
             .expect("offscreen dimensions must be validated before rendering");
+        restrict_default_wgpu_backends();
         let mut context =
             WGPUContext::with_features_and_limits(Some(Features::CLEAR_TEXTURE), None);
         let buffer = pollster::block_on(context.create_buffer_renderer(
